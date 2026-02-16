@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>NeuroProfit AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body style="background:#0f172a;color:white;text-align:center;font-family:Arial">
+
+<h1>NeuroProfit AI</h1>
+
+<div id="auth">
+<input type="email" id="email" placeholder="Email"><br><br>
+<input type="password" id="password" placeholder="Senha"><br><br>
+<button onclick="signup()">Criar Conta</button>
+<button onclick="login()">Entrar</button>
+</div>
+
+<div id="dashboard" style="display:none">
+<h2>Bem-vindo ao Dashboard 🚀</h2>
+<p id="userEmail"></p>
+<button onclick="logout()">Sair</button>
+</div>
+
+<script>
+
+const supabaseUrl = "https://fgatcdryezszrojoledj.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM";
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// Verifica sessão ao abrir página
+document.addEventListener("DOMContentLoaded", async () => {
+  const { data } = await supabase.auth.getSession();
+    if (data.session) {
+        showDashboard(data.session.user.email);
+          }
+          });
+
+          function showDashboard(email){
+            document.getElementById("auth").style.display="none";
+              document.getElementById("dashboard").style.display="block";
+                document.getElementById("userEmail").innerText = "Logado como: " + email;
+                }
+
+                async function signup(){
+                  const email = document.getElementById("email").value;
+                    const password = document.getElementById("password").value;
+
+                      const { error } = await supabase.auth.signUp({ email, password });
+
+                        if(error){
+                            alert(error.message);
+                              }else{
+                                  alert("Conta criada! Verifique seu email.");
+                                    }
+                                    }
+
+                                    async function login(){
+                                      const email = document.getElementById("email").value;
+                                        const password = document.getElementById("password").value;
+
+                                          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+                                            if(error){
+                                                alert(error.message);
+                                                  }else{
+                                                      showDashboard(data.user.email);
+                                                        }
+                                                        }
+
+                                                        async function logout(){
+                                                          await supabase.auth.signOut();
+                                                            location.reload();
+                                                            }
+
+                                                            </script>
+
+                                                            </body>
+                                                            </html>
+                                                          
