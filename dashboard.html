@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>NeuroProfit AI - Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 body { font-family: Arial; background:#0f172a; color:white; padding:20px; }
 button { padding:10px 15px; background:#06b6d4; border:none; border-radius:6px; cursor:pointer; }
@@ -20,13 +21,15 @@ input { padding:10px; width:100%; margin-bottom:10px; border-radius:6px; border:
 <button onclick="generateScript()">Gerar Roteiro</button>
 <p id="status"></p>
 <p>Restantes hoje: <span id="remaining">2</span></p>
+<p>Dias restantes: <span id="daysLeft">3</span></p>
 </div>
 
 <script>
 
-const supabaseUrl = "https://fgatcdryezszrojoledj.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM";
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = supabase.createClient(
+  "https://fgatcdryezszrojoledj.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
+);
 
 const MAX_DAYS = 3;
 const MAX_PER_DAY = 2;
@@ -37,10 +40,38 @@ function daysBetween(date1, date2){
   return Math.floor((d2 - d1) / (1000*60*60*24));
 }
 
+async function loadStatus(){
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if(!user) return;
+
+  const today = new Date().toISOString().split("T")[0];
+
+  let { data } = await supabaseClient
+    .from("usage_control")
+    .select("*")
+    .eq("user_id", user.id)
+    .single();
+
+  if(!data){
+    document.getElementById("remaining").innerText = MAX_PER_DAY;
+    document.getElementById("daysLeft").innerText = MAX_DAYS;
+    return;
+  }
+
+  const totalDays = daysBetween(data.start_date, today);
+  const daysLeft = MAX_DAYS - totalDays;
+
+  document.getElementById("remaining").innerText =
+    MAX_PER_DAY - data.daily_count;
+
+  document.getElementById("daysLeft").innerText =
+    daysLeft > 0 ? daysLeft : 0;
+}
+
 async function generateScript(){
 
-  const { data: { user } } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabaseClient.auth.getUser();
   if(!user){
     alert("Faça login primeiro.");
     return;
@@ -48,7 +79,7 @@ async function generateScript(){
 
   const today = new Date().toISOString().split("T")[0];
 
-  let { data, error } = await supabase
+  let { data } = await supabaseClient
     .from("usage_control")
     .select("*")
     .eq("user_id", user.id)
@@ -56,14 +87,14 @@ async function generateScript(){
 
   if(!data){
 
-    await supabase.from("usage_control").insert({
+    await supabaseClient.from("usage_control").insert({
       user_id: user.id,
       start_date: today,
       last_use_date: today,
       daily_count: 1
     });
 
-    document.getElementById("remaining").innerText = MAX_PER_DAY - 1;
+    loadStatus();
     document.getElementById("status").innerText = "Roteiro gerado!";
     return;
   }
@@ -87,18 +118,18 @@ async function generateScript(){
 
   data.daily_count += 1;
 
-  await supabase.from("usage_control")
+  await supabaseClient.from("usage_control")
     .update({
       daily_count: data.daily_count,
       last_use_date: today
     })
     .eq("user_id", user.id);
 
-  document.getElementById("remaining").innerText =
-    MAX_PER_DAY - data.daily_count;
-
   document.getElementById("status").innerText = "Roteiro gerado!";
+  loadStatus();
 }
+
+loadStatus();
 
 </script>
 
