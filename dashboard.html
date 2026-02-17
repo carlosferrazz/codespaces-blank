@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <title>NeuroProfit AI</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -100,20 +100,20 @@
 
 <div class="main">
 
-<div class="card">
-  <h3>Plano Free (Teste 3 Dias)</h3>
-  Roteiros restantes hoje:
-  <b id="remaining">2</b> / 2
-  <br><br>
-  Após 3 dias o acesso será bloqueado.
-</div>
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="section active">
     <h1>Dashboard</h1>
+
     <div class="card">
-      Bem-vindo 🚀 <br><br>
-      Seu sistema está funcionando.
+      <h3>Plano Free (Teste 3 Dias)</h3>
+      Roteiros restantes hoje:
+      <b id="remaining">2</b> / 2
+      <br><br>
+      Após 3 dias o acesso será bloqueado.
     </div>
   </div>
 
+  <!-- GERADOR -->
   <div id="gerador" class="section">
     <h1>Gerador de Roteiro IA</h1>
 
@@ -123,31 +123,31 @@
     <pre id="resultado"></pre>
   </div>
 
+  <!-- HISTÓRICO -->
   <div id="historico" class="section">
     <h1>Histórico</h1>
     <div class="card">
-      Nenhum roteiro salvo ainda.
+      Histórico será conectado ao banco em breve.
     </div>
   </div>
 
+  <!-- ANALYTICS -->
   <div id="analytics" class="section">
     <h1>Analytics</h1>
     <div class="card">
-  <canvas id="growthChart"></canvas>
-</div>
+      <canvas id="growthChart"></canvas>
     </div>
   </div>
 
+  <!-- PRO -->
   <div id="pro" class="section">
     <h1>Plano PRO</h1>
     <div class="card">
-      Desbloqueie:
-      <br><br>
-      ✔ Roteiros ilimitados  
-      ✔ Templates avançados  
-      ✔ Analytics completo  
-      ✔ IA Premium  
-      <br><br>
+      ✔ Roteiros ilimitados<br>
+      ✔ Templates avançados<br>
+      ✔ Analytics completo<br>
+      ✔ IA Premium<br><br>
+
       <button>Fazer Upgrade</button>
     </div>
   </div>
@@ -156,34 +156,19 @@
 
 <script>
 
+/* MENU */
 function showSection(id) {
   document.querySelectorAll(".section").forEach(sec => {
     sec.classList.remove("active");
   });
   document.getElementById(id).classList.add("active");
 }
-  const prompt = document.getElementById("prompt").value;
-
-  if (!prompt) {
-    alert("Digite um tema primeiro.");
-    return;
-  }
-
-  document.getElementById("resultado").innerText = "Gerando roteiro...";
-
-  const response = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt })
-  });
-
-  const data = await response.json();
-  document.getElementById("resultado").innerText = data.result;
-}
 
 function logout() {
   window.location.href = "/";
 }
+
+/* GRÁFICO */
 const ctx = document.getElementById('growthChart').getContext('2d');
 
 new Chart(ctx, {
@@ -205,15 +190,13 @@ new Chart(ctx, {
       }
     },
     scales: {
-      x: {
-        ticks: { color: 'white' }
-      },
-      y: {
-        ticks: { color: 'white' }
-      }
+      x: { ticks: { color: 'white' } },
+      y: { ticks: { color: 'white' } }
     }
   }
 });
+
+/* CONTROLE FREE */
 const MAX_DAYS = 3;
 const MAX_PER_DAY = 2;
 
@@ -221,44 +204,43 @@ function getToday() {
   return new Date().toISOString().split("T")[0];
 }
 
-function getUsageData() {
-  const data = JSON.parse(localStorage.getItem("usage")) || {
+function getUsage() {
+  return JSON.parse(localStorage.getItem("usage")) || {
     startDate: getToday(),
     daysUsed: 0,
     dailyCount: 0,
     lastUseDate: getToday()
   };
-
-  return data;
 }
 
-function saveUsageData(data) {
+function saveUsage(data) {
   localStorage.setItem("usage", JSON.stringify(data));
 }
 
-function updateUI(data) {
-  const remainingToday = MAX_PER_DAY - data.dailyCount;
-  document.getElementById("remaining").innerText = remainingToday;
+function updateCounter(data) {
+  document.getElementById("remaining").innerText =
+    MAX_PER_DAY - data.dailyCount;
 }
 
 async function generateScript() {
-  let data = getUsageData();
+
+  let usage = getUsage();
   const today = getToday();
 
-  if (today !== data.lastUseDate) {
-    data.dailyCount = 0;
-    data.daysUsed++;
-    data.lastUseDate = today;
+  if (usage.lastUseDate !== today) {
+    usage.dailyCount = 0;
+    usage.daysUsed += 1;
+    usage.lastUseDate = today;
   }
 
-  if (data.daysUsed >= MAX_DAYS) {
-    alert("Período gratuito encerrado. Faça upgrade para continuar.");
+  if (usage.daysUsed >= MAX_DAYS) {
+    alert("Período gratuito encerrado.");
     showSection("pro");
     return;
   }
 
-  if (data.dailyCount >= MAX_PER_DAY) {
-    alert("Limite diário atingido. Volte amanhã ou faça upgrade.");
+  if (usage.dailyCount >= MAX_PER_DAY) {
+    alert("Limite diário atingido.");
     return;
   }
 
@@ -269,9 +251,9 @@ async function generateScript() {
     return;
   }
 
-  data.dailyCount++;
-  saveUsageData(data);
-  updateUI(data);
+  usage.dailyCount += 1;
+  saveUsage(usage);
+  updateCounter(usage);
 
   document.getElementById("resultado").innerText = "Gerando roteiro...";
 
@@ -286,9 +268,9 @@ async function generateScript() {
 }
 
 window.onload = function() {
-  const data = getUsageData();
-  updateUI(data);
+  updateCounter(getUsage());
 };
+
 </script>
 
 </body>
