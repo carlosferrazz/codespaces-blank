@@ -67,6 +67,26 @@
   <div class="card">
     <h3>Status do Plano</h3>
     <p>Plano: Free</p>
+    <div style="margin-top:30px; background:#16213e; padding:20px; border-radius:10px;">
+  <h3>Gerador de Roteiro IA</h3>
+
+  <textarea 
+    id="prompt" 
+    placeholder="Digite o tema do vídeo..."
+    style="width:100%; height:80px; margin-top:10px; padding:10px; border-radius:6px;">
+  </textarea>
+
+  <button 
+    onclick="generateScript()" 
+    style="margin-top:10px; padding:10px 15px; border:none; border-radius:6px; background:#00bcd4; color:white;">
+    Gerar Roteiro
+  </button>
+
+  <pre 
+    id="resultado" 
+    style="margin-top:15px; white-space:pre-wrap;">
+  </pre>
+    </div>
   </div>
 
 </div>
