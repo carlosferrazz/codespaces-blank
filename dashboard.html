@@ -180,7 +180,36 @@ async function generateScript() {
 function logout() {
   window.location.href = "/";
 }
+const ctx = document.getElementById('growthChart').getContext('2d');
 
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'],
+    datasets: [{
+      label: 'Roteiros Criados',
+      data: [2, 4, 3, 6, 5, 8, 10],
+      borderColor: '#06b6d4',
+      backgroundColor: 'rgba(6,182,212,0.2)',
+      tension: 0.3
+    }]
+  },
+  options: {
+    plugins: {
+      legend: {
+        labels: { color: 'white' }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: 'white' }
+      },
+      y: {
+        ticks: { color: 'white' }
+      }
+    }
+  }
+});
 </script>
 
 </body>
