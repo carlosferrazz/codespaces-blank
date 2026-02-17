@@ -1,4 +1,4 @@
-se<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -59,7 +59,7 @@ button:hover {
 
 <script>
 
-const supabaseClient = supabase.createClient(
+const supabaseClient = window.supabase.createClient(
   "https://fgatcdryezszrojoledj.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
 );
@@ -87,22 +87,21 @@ async function loadStatus(){
   const { data } = await supabaseClient
     .from("usage_control")
     .select("*")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .single();
 
-  let record = data && data.length > 0 ? data[0] : null;
-
-  if(!record){
+  if(!data){
     document.getElementById("remaining").innerText = MAX_PER_DAY;
     document.getElementById("daysLeft").innerText = MAX_DAYS;
     return;
   }
 
-  const totalDays = daysBetween(record.start_date, today);
+  const totalDays = daysBetween(data.start_date, today);
   const daysLeft = MAX_DAYS - totalDays;
 
-  let dailyCount = record.daily_count;
+  let dailyCount = data.daily_count || 0;
 
-  if(today !== record.last_use_date){
+  if(today !== data.last_use_date){
     dailyCount = 0;
   }
 
@@ -115,35 +114,28 @@ async function loadStatus(){
 
 async function generateScript(){
 
-  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-
-  if(userError){
-    alert("Erro ao pegar usuário");
-    console.log(userError);
-    return;
-  }
+  const { data: { user } } = await supabaseClient.auth.getUser();
 
   if(!user){
     alert("Faça login primeiro.");
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getToday();
 
   const { data, error } = await supabaseClient
     .from("usage_control")
     .select("*")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .single();
 
-  if(error){
-    alert("Erro no SELECT");
+  if(error && error.code !== "PGRST116"){
+    alert("Erro ao buscar dados");
     console.log(error);
     return;
   }
 
-  let record = data && data.length > 0 ? data[0] : null;
-
-  if(!record){
+  if(!data){
 
     const { error: insertError } = await supabaseClient
       .from("usage_control")
@@ -155,31 +147,30 @@ async function generateScript(){
       });
 
     if(insertError){
-      alert("Erro no INSERT");
+      alert("Erro ao criar registro");
       console.log(insertError);
       return;
     }
 
-    alert("Primeiro uso criado");
+    alert("Primeiro uso registrado!");
+    loadStatus();
     return;
   }
 
-  const totalDays = Math.floor(
-    (new Date(today) - new Date(record.start_date)) / (1000*60*60*24)
-  );
+  const totalDays = daysBetween(data.start_date, today);
 
-  if(totalDays >= 3){
+  if(totalDays >= MAX_DAYS){
     alert("Plano gratuito expirou.");
     return;
   }
 
-  let dailyCount = record.daily_count;
+  let dailyCount = data.daily_count || 0;
 
-  if(today !== record.last_use_date){
+  if(today !== data.last_use_date){
     dailyCount = 0;
   }
 
-  if(dailyCount >= 2){
+  if(dailyCount >= MAX_PER_DAY){
     alert("Limite diário atingido.");
     return;
   }
@@ -195,13 +186,16 @@ async function generateScript(){
     .eq("user_id", user.id);
 
   if(updateError){
-    alert("Erro no UPDATE");
+    alert("Erro ao atualizar");
     console.log(updateError);
     return;
   }
 
-  alert("Atualizado para: " + newCount);
+  alert("Uso atualizado!");
+  loadStatus();
 }
+
+loadStatus();
 
 </script>
 
