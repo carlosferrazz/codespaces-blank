@@ -216,6 +216,81 @@ new Chart(ctx, {
     }
   }
 });
+const MAX_DAYS = 3;
+const MAX_PER_DAY = 2;
+
+function getToday() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getUsageData() {
+  const data = JSON.parse(localStorage.getItem("usage")) || {
+    startDate: getToday(),
+    daysUsed: 0,
+    dailyCount: 0,
+    lastUseDate: getToday()
+  };
+
+  return data;
+}
+
+function saveUsageData(data) {
+  localStorage.setItem("usage", JSON.stringify(data));
+}
+
+function updateUI(data) {
+  const remainingToday = MAX_PER_DAY - data.dailyCount;
+  document.getElementById("remaining").innerText = remainingToday;
+}
+
+async function generateScript() {
+  let data = getUsageData();
+  const today = getToday();
+
+  if (today !== data.lastUseDate) {
+    data.dailyCount = 0;
+    data.daysUsed++;
+    data.lastUseDate = today;
+  }
+
+  if (data.daysUsed >= MAX_DAYS) {
+    alert("Período gratuito encerrado. Faça upgrade para continuar.");
+    showSection("pro");
+    return;
+  }
+
+  if (data.dailyCount >= MAX_PER_DAY) {
+    alert("Limite diário atingido. Volte amanhã ou faça upgrade.");
+    return;
+  }
+
+  const prompt = document.getElementById("prompt").value;
+
+  if (!prompt) {
+    alert("Digite um tema primeiro.");
+    return;
+  }
+
+  data.dailyCount++;
+  saveUsageData(data);
+  updateUI(data);
+
+  document.getElementById("resultado").innerText = "Gerando roteiro...";
+
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt })
+  });
+
+  const result = await response.json();
+  document.getElementById("resultado").innerText = result.result;
+}
+
+window.onload = function() {
+  const data = getUsageData();
+  updateUI(data);
+};
 </script>
 
 </body>
