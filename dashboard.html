@@ -1,266 +1,78 @@
-<!DOCTYPE html>  <html>  
-<head>  
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  
-  <title>NeuroProfit AI</title>  
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>  
-  <style>  
-    body {  
-      margin: 0;  
-      font-family: Arial, sans-serif;  
-      background: #0f172a;  
-      color: white;  
-      display: flex;  
-    }  .sidebar {  
-  width: 220px;  
-  background: #111827;  
-  height: 100vh;  
-  padding: 20px;  
-}  
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Teste Contador</title>
+</head>
+<body>
 
-.sidebar h2 {  
-  font-size: 18px;  
-  margin-bottom: 30px;  
-}  
+<h2>Gerador</h2>
 
-.menu-item {  
-  padding: 10px;  
-  margin-bottom: 8px;  
-  cursor: pointer;  
-  border-radius: 6px;  
-}  
+<input id="prompt" placeholder="Digite algo">
+<button onclick="generate()">Gerar</button>
 
-.menu-item:hover {  
-  background: #1f2937;  
-}  
+<p>Restantes hoje: <span id="remaining"></span></p>
+<p id="resultado"></p>
 
-.main {  
-  flex: 1;  
-  padding: 30px;  
-}  
+<script>
 
-.section {  
-  display: none;  
-}  
+const MAX_PER_DAY = 2;
 
-.active {  
-  display: block;  
-}  
-
-textarea {  
-  width: 100%;  
-  height: 80px;  
-  padding: 10px;  
-  border-radius: 6px;  
-  border: none;  
-  margin-top: 10px;  
-}  
-
-button {  
-  margin-top: 10px;  
-  padding: 10px 15px;  
-  border: none;  
-  border-radius: 6px;  
-  background: #06b6d4;  
-  color: white;  
-  cursor: pointer;  
-}  
-
-pre {  
-  white-space: pre-wrap;  
-  margin-top: 15px;  
-}  
-
-.card {  
-  background: #1e293b;  
-  padding: 20px;  
-  border-radius: 10px;  
-  margin-top: 20px;  
+function getToday(){
+  return new Date().toISOString().split("T")[0];
 }
 
-  </style>  
-</head>  <body>  <div class="sidebar">  
-  <h2>NeuroProfit AI</h2>    <div class="menu-item" onclick="showSection('dashboard')">🏠 Dashboard</div>  
-  <div class="menu-item" onclick="showSection('gerador')">✍️ Gerador</div>  
-  <div class="menu-item" onclick="showSection('historico')">📊 Histórico</div>  
-  <div class="menu-item" onclick="showSection('analytics')">📈 Analytics</div>  
-  <div class="menu-item" onclick="showSection('pro')">💎 Plano PRO</div>    <div style="margin-top:40px;">  
-    <button onclick="logout()">Logout</button>  
-  </div>  
-</div>  <div class="main">  <div class="card">  
-  <h3>Plano Free (Teste 3 Dias)</h3>  
-  Roteiros restantes hoje:  
-  <b id="remaining">2</b> / 2  
-  <br><br>  
-  Após 3 dias o acesso será bloqueado.  
-</div>  
-    <h1>Dashboard</h1>  
-    <div class="card">  
-      Bem-vindo 🚀 <br><br>  
-      Seu sistema está funcionando.  
-    </div>  
-  </div>    <div id="gerador" class="section">  
-    <h1>Gerador de Roteiro IA</h1>  <textarea id="prompt" placeholder="Digite o tema do vídeo..."></textarea>  
-<button onclick="generateScript()">Gerar Roteiro</button>  
+function getData(){
+  return JSON.parse(localStorage.getItem("usageTest")) || {
+    date: getToday(),
+    count: 0
+  };
+}
 
-<pre id="resultado"></pre>
+function saveData(data){
+  localStorage.setItem("usageTest", JSON.stringify(data));
+}
 
-  </div>    <div id="historico" class="section">  
-    <h1>Histórico</h1>  
-    <div class="card">  
-      Nenhum roteiro salvo ainda.  
-    </div>  
-  </div>    <div id="analytics" class="section">  
-    <h1>Analytics</h1>  
-    <div class="card">  
-  <canvas id="growthChart"></canvas>  
-</div>  
-    </div>  
-  </div>    <div id="pro" class="section">  
-    <h1>Plano PRO</h1>  
-    <div class="card">  
-      Desbloqueie:  
-      <br><br>  
-      ✔ Roteiros ilimitados    
-      ✔ Templates avançados    
-      ✔ Analytics completo    
-      ✔ IA Premium    
-      <br><br>  
-      <button>Fazer Upgrade</button>  
-    </div>  
-  </div>  </div>  <script>  
-  
-function showSection(id) {  
-  document.querySelectorAll(".section").forEach(sec => {  
-    sec.classList.remove("active");  
-  });  
-  document.getElementById(id).classList.add("active");  
-}  
-  const prompt = document.getElementById("prompt").value;  
-  
-  if (!prompt) {  
-    alert("Digite um tema primeiro.");  
-    return;  
-  }  
-  
-  document.getElementById("resultado").innerText = "Gerando roteiro...";  
-  
-  const response = await fetch("/api/generate", {  
-    method: "POST",  
-    headers: { "Content-Type": "application/json" },  
-    body: JSON.stringify({ prompt })  
-  });  
-  
-  const data = await response.json();  
-  document.getElementById("resultado").innerText = data.result;  
-}  
-  
-function logout() {  
-  window.location.href = "/";  
-}  
-const ctx = document.getElementById('growthChart').getContext('2d');  
-  
-new Chart(ctx, {  
-  type: 'line',  
-  data: {  
-    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'],  
-    datasets: [{  
-      label: 'Roteiros Criados',  
-      data: [2, 4, 3, 6, 5, 8, 10],  
-      borderColor: '#06b6d4',  
-      backgroundColor: 'rgba(6,182,212,0.2)',  
-      tension: 0.3  
-    }]  
-  },  
-  options: {  
-    plugins: {  
-      legend: {  
-        labels: { color: 'white' }  
-      }  
-    },  
-    scales: {  
-      x: {  
-        ticks: { color: 'white' }  
-      },  
-      y: {  
-        ticks: { color: 'white' }  
-      }  
-    }  
-  }  
-});  
-const MAX_DAYS = 3;  
-const MAX_PER_DAY = 2;  
-  
-function getToday() {  
-  return new Date().toISOString().split("T")[0];  
-}  
-  
-function getUsageData() {  
-  const data = JSON.parse(localStorage.getItem("usage")) || {  
-    startDate: getToday(),  
-    daysUsed: 0,  
-    dailyCount: 0,  
-    lastUseDate: getToday()  
-  };  
-  
-  return data;  
-}  
-  
-function saveUsageData(data) {  
-  localStorage.setItem("usage", JSON.stringify(data));  
-}  
-  
-function updateUI(data) {  
-  const remainingToday = MAX_PER_DAY - data.dailyCount;  
-  document.getElementById("remaining").innerText = remainingToday;  
-}  
-  
-async function generateScript() {  
-  let data = getUsageData();  
-  const today = getToday();  
-  
-  if (today !== data.lastUseDate) {  
-    data.dailyCount = 0;  
-    data.daysUsed++;  
-    data.lastUseDate = today;  
-  }  
-  
-  if (data.daysUsed >= MAX_DAYS) {  
-    alert("Período gratuito encerrado. Faça upgrade para continuar.");  
-    showSection("pro");  
-    return;  
-  }  
-  
-  if (data.dailyCount >= MAX_PER_DAY) {  
-    alert("Limite diário atingido. Volte amanhã ou faça upgrade.");  
-    return;  
-  }  
-  
-  const prompt = document.getElementById("prompt").value;  
-  
-  if (!prompt) {  
-    alert("Digite um tema primeiro.");  
-    return;  
-  }  
-  
-  data.dailyCount++;  
-  saveUsageData(data);  
-  updateUI(data);  
-  
-  document.getElementById("resultado").innerText = "Gerando roteiro...";  
-  
-  const response = await fetch("/api/generate", {  
-    method: "POST",  
-    headers: { "Content-Type": "application/json" },  
-    body: JSON.stringify({ prompt })  
-  });  
-  
-  const result = await response.json();  
-  document.getElementById("resultado").innerText = result.result;  
-}  
-  
-window.onload = function() {  
-  const data = getUsageData();  
-  updateUI(data);  
-};  
-</script>  </body>  
+function updateUI(data){
+  document.getElementById("remaining").innerText =
+    MAX_PER_DAY - data.count;
+}
+
+function generate(){
+
+  let data = getData();
+  const today = getToday();
+
+  if(today !== data.date){
+    data.count = 0;
+    data.date = today;
+  }
+
+  if(data.count >= MAX_PER_DAY){
+    alert("Limite atingido!");
+    return;
+  }
+
+  const prompt = document.getElementById("prompt").value;
+
+  if(!prompt){
+    alert("Digite algo");
+    return;
+  }
+
+  data.count++;
+  saveData(data);
+  updateUI(data);
+
+  document.getElementById("resultado").innerText =
+    "Gerado: " + prompt;
+}
+
+window.onload = function(){
+  updateUI(getData());
+};
+
+</script>
+
+</body>
 </html>
