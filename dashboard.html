@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>NeuroProfit AI - Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      background: #0b1a2e;
+      color: white;
+      font-family: Arial;
+      margin: 0;
+    }
+
+    .sidebar {
+      width: 200px;
+      height: 100vh;
+      background: #111f36;
+      position: fixed;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+
+    .sidebar button {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      background: #1e3a5f;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .main {
+      margin-left: 220px;
+      padding: 40px;
+    }
+
+    .card {
+      background: #162b4d;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>NeuroProfit AI</h2>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="main">
+  <h1>Dashboard</h1>
+
+  <div class="card">
+    <h3>Bem-vindo 🚀</h3>
+    <p>Seu sistema está funcionando.</p>
+  </div>
+
+  <div class="card">
+    <h3>Status do Plano</h3>
+    <p>Plano: Free</p>
+  </div>
+
+</div>
+
+<script>
+const supabaseUrl = "https://fgatcdryezszrojoledj.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM";
+
+const { createClient } = supabase;
+const client = createClient(supabaseUrl, supabaseKey);
+
+// Verifica se está logado
+async function checkUser() {
+  const { data } = await client.auth.getUser();
+  if (!data.user) {
+    window.location.href = "/";
+  }
+}
+
+checkUser();
+
+async function logout() {
+  await client.auth.signOut();
+  window.location.href = "/";
+}
+</script>
+
+</body>
+</html>
