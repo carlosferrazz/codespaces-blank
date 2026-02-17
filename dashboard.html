@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+se<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -115,38 +115,60 @@ async function loadStatus(){
 
 async function generateScript(){
 
-  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+
+  if(userError){
+    alert("Erro ao pegar usuário");
+    console.log(userError);
+    return;
+  }
+
   if(!user){
     alert("Faça login primeiro.");
     return;
   }
 
-  const today = getToday();
+  const today = new Date().toISOString().split("T")[0];
 
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("usage_control")
     .select("*")
     .eq("user_id", user.id);
+
+  if(error){
+    alert("Erro no SELECT");
+    console.log(error);
+    return;
+  }
 
   let record = data && data.length > 0 ? data[0] : null;
 
   if(!record){
 
-    await supabaseClient.from("usage_control").insert({
-      user_id: user.id,
-      start_date: today,
-      last_use_date: today,
-      daily_count: 1
-    });
+    const { error: insertError } = await supabaseClient
+      .from("usage_control")
+      .insert({
+        user_id: user.id,
+        start_date: today,
+        last_use_date: today,
+        daily_count: 1
+      });
 
-    document.getElementById("status").innerText = "Roteiro gerado!";
-    loadStatus();
+    if(insertError){
+      alert("Erro no INSERT");
+      console.log(insertError);
+      return;
+    }
+
+    alert("Primeiro uso criado");
     return;
   }
 
-  const totalDays = daysBetween(record.start_date, today);
+  const totalDays = Math.floor(
+    (new Date(today) - new Date(record.start_date)) / (1000*60*60*24)
+  );
 
-  if(totalDays >= MAX_DAYS){
+  if(totalDays >= 3){
     alert("Plano gratuito expirou.");
     return;
   }
@@ -157,25 +179,29 @@ async function generateScript(){
     dailyCount = 0;
   }
 
-  if(dailyCount >= MAX_PER_DAY){
+  if(dailyCount >= 2){
     alert("Limite diário atingido.");
     return;
   }
 
   const newCount = dailyCount + 1;
 
-  await supabaseClient.from("usage_control")
+  const { error: updateError } = await supabaseClient
+    .from("usage_control")
     .update({
       daily_count: newCount,
       last_use_date: today
     })
     .eq("user_id", user.id);
 
-  document.getElementById("status").innerText = "Roteiro gerado!";
-  loadStatus();
-}
+  if(updateError){
+    alert("Erro no UPDATE");
+    console.log(updateError);
+    return;
+  }
 
-loadStatus();
+  alert("Atualizado para: " + newCount);
+}
 
 </script>
 
