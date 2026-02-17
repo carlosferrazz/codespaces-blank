@@ -92,6 +92,27 @@ async function logout() {
   await client.auth.signOut();
   window.location.href = "/";
 }
+async function generateScript() {
+  const prompt = document.getElementById("prompt").value;
+
+  if (!prompt) {
+    alert("Digite um tema primeiro.");
+    return;
+  }
+
+  document.getElementById("resultado").innerText = "Gerando roteiro...";
+
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ prompt })
+  });
+
+  const data = await response.json();
+  document.getElementById("resultado").innerText = data.result;
+}
 </script>
 
 </body>
