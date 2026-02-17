@@ -3,25 +3,58 @@
 <head>
 <meta charset="UTF-8">
 <title>NeuroProfit AI - Dashboard</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body { font-family: Arial; background:#0f172a; color:white; padding:20px; }
-button { padding:10px 15px; background:#06b6d4; border:none; border-radius:6px; cursor:pointer; }
-input { padding:10px; width:100%; margin-bottom:10px; border-radius:6px; border:none; }
-.card { background:#1e293b; padding:20px; border-radius:10px; margin-bottom:20px; }
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  padding: 20px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+input {
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  border: none;
+}
+
+button {
+  padding: 10px 15px;
+  background: #06b6d4;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  opacity: 0.8;
+}
 </style>
+
 </head>
 <body>
 
 <h2>Gerador de Roteiros</h2>
 
 <div class="card">
-<input id="prompt" placeholder="Digite o tema">
-<button onclick="generateScript()">Gerar Roteiro</button>
-<p id="status"></p>
-<p>Restantes hoje: <span id="remaining">2</span></p>
-<p>Dias restantes: <span id="daysLeft">3</span></p>
+  <input id="prompt" placeholder="Digite o tema do roteiro">
+  <button onclick="generateScript()">Gerar Roteiro</button>
+
+  <p id="status"></p>
+  <p>Restantes hoje: <span id="remaining">2</span></p>
+  <p>Dias restantes: <span id="daysLeft">3</span></p>
 </div>
 
 <script>
@@ -34,10 +67,14 @@ const supabaseClient = supabase.createClient(
 const MAX_DAYS = 3;
 const MAX_PER_DAY = 2;
 
+function getToday(){
+  return new Date().toISOString().split("T")[0];
+}
+
 function daysBetween(date1, date2){
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
-  return Math.floor((d2 - d1) / (1000*60*60*24));
+  return Math.floor(
+    (new Date(date2) - new Date(date1)) / (1000*60*60*24)
+  );
 }
 
 async function loadStatus(){
@@ -45,25 +82,32 @@ async function loadStatus(){
   const { data: { user } } = await supabaseClient.auth.getUser();
   if(!user) return;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getToday();
 
-  let { data } = await supabaseClient
+  const { data } = await supabaseClient
     .from("usage_control")
     .select("*")
-    .eq("user_id", user.id)
-    .single();
+    .eq("user_id", user.id);
 
-  if(!data){
+  let record = data && data.length > 0 ? data[0] : null;
+
+  if(!record){
     document.getElementById("remaining").innerText = MAX_PER_DAY;
     document.getElementById("daysLeft").innerText = MAX_DAYS;
     return;
   }
 
-  const totalDays = daysBetween(data.start_date, today);
+  const totalDays = daysBetween(record.start_date, today);
   const daysLeft = MAX_DAYS - totalDays;
 
+  let dailyCount = record.daily_count;
+
+  if(today !== record.last_use_date){
+    dailyCount = 0;
+  }
+
   document.getElementById("remaining").innerText =
-    MAX_PER_DAY - data.daily_count;
+    MAX_PER_DAY - dailyCount;
 
   document.getElementById("daysLeft").innerText =
     daysLeft > 0 ? daysLeft : 0;
@@ -77,15 +121,16 @@ async function generateScript(){
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getToday();
 
-  let { data } = await supabaseClient
+  const { data } = await supabaseClient
     .from("usage_control")
     .select("*")
-    .eq("user_id", user.id)
-    .single();
+    .eq("user_id", user.id);
 
-  if(!data){
+  let record = data && data.length > 0 ? data[0] : null;
+
+  if(!record){
 
     await supabaseClient.from("usage_control").insert({
       user_id: user.id,
@@ -94,33 +139,34 @@ async function generateScript(){
       daily_count: 1
     });
 
-    loadStatus();
     document.getElementById("status").innerText = "Roteiro gerado!";
+    loadStatus();
     return;
   }
 
-  const totalDays = daysBetween(data.start_date, today);
+  const totalDays = daysBetween(record.start_date, today);
 
   if(totalDays >= MAX_DAYS){
     alert("Plano gratuito expirou.");
     return;
   }
 
-  if(today !== data.last_use_date){
-    data.daily_count = 0;
-    data.last_use_date = today;
+  let dailyCount = record.daily_count;
+
+  if(today !== record.last_use_date){
+    dailyCount = 0;
   }
 
-  if(data.daily_count >= MAX_PER_DAY){
+  if(dailyCount >= MAX_PER_DAY){
     alert("Limite diário atingido.");
     return;
   }
 
-  data.daily_count += 1;
+  const newCount = dailyCount + 1;
 
   await supabaseClient.from("usage_control")
     .update({
-      daily_count: data.daily_count,
+      daily_count: newCount,
       last_use_date: today
     })
     .eq("user_id", user.id);
