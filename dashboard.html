@@ -1,22 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>NeuroProfit AI - Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>NeuroProfit AI</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body {
-      background: #0b1a2e;
-      color: white;
-      font-family: Arial;
       margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
     }
 
     .sidebar {
-      width: 200px;
+      width: 220px;
+      background: #111827;
       height: 100vh;
-      background: #111f36;
-      position: fixed;
       padding: 20px;
     }
 
@@ -25,93 +24,137 @@
       margin-bottom: 30px;
     }
 
-    .sidebar button {
-      display: block;
-      width: 100%;
-      margin-bottom: 10px;
+    .menu-item {
       padding: 10px;
-      background: #1e3a5f;
-      color: white;
-      border: none;
+      margin-bottom: 8px;
       cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .menu-item:hover {
+      background: #1f2937;
     }
 
     .main {
-      margin-left: 220px;
-      padding: 40px;
+      flex: 1;
+      padding: 30px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .active {
+      display: block;
+    }
+
+    textarea {
+      width: 100%;
+      height: 80px;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      background: #06b6d4;
+      color: white;
+      cursor: pointer;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      margin-top: 15px;
     }
 
     .card {
-      background: #162b4d;
+      background: #1e293b;
       padding: 20px;
       border-radius: 10px;
-      margin-bottom: 20px;
+      margin-top: 20px;
     }
   </style>
 </head>
+
 <body>
 
 <div class="sidebar">
   <h2>NeuroProfit AI</h2>
-  <button onclick="logout()">Logout</button>
+
+  <div class="menu-item" onclick="showSection('dashboard')">🏠 Dashboard</div>
+  <div class="menu-item" onclick="showSection('gerador')">✍️ Gerador</div>
+  <div class="menu-item" onclick="showSection('historico')">📊 Histórico</div>
+  <div class="menu-item" onclick="showSection('analytics')">📈 Analytics</div>
+  <div class="menu-item" onclick="showSection('pro')">💎 Plano PRO</div>
+
+  <div style="margin-top:40px;">
+    <button onclick="logout()">Logout</button>
+  </div>
 </div>
 
 <div class="main">
-  <h1>Dashboard</h1>
 
-  <div class="card">
-    <h3>Bem-vindo 🚀</h3>
-    <p>Seu sistema está funcionando.</p>
+  <div id="dashboard" class="section active">
+    <h1>Dashboard</h1>
+    <div class="card">
+      Bem-vindo 🚀 <br><br>
+      Seu sistema está funcionando.
+    </div>
   </div>
 
-  <div class="card">
-    <h3>Status do Plano</h3>
-    <p>Plano: Free</p>
-    <div style="margin-top:30px; background:#16213e; padding:20px; border-radius:10px;">
-  <h3>Gerador de Roteiro IA</h3>
+  <div id="gerador" class="section">
+    <h1>Gerador de Roteiro IA</h1>
 
-  <textarea 
-    id="prompt" 
-    placeholder="Digite o tema do vídeo..."
-    style="width:100%; height:80px; margin-top:10px; padding:10px; border-radius:6px;">
-  </textarea>
+    <textarea id="prompt" placeholder="Digite o tema do vídeo..."></textarea>
+    <button onclick="generateScript()">Gerar Roteiro</button>
 
-  <button 
-    onclick="generateScript()" 
-    style="margin-top:10px; padding:10px 15px; border:none; border-radius:6px; background:#00bcd4; color:white;">
-    Gerar Roteiro
-  </button>
+    <pre id="resultado"></pre>
+  </div>
 
-  <pre 
-    id="resultado" 
-    style="margin-top:15px; white-space:pre-wrap;">
-  </pre>
+  <div id="historico" class="section">
+    <h1>Histórico</h1>
+    <div class="card">
+      Nenhum roteiro salvo ainda.
+    </div>
+  </div>
+
+  <div id="analytics" class="section">
+    <h1>Analytics</h1>
+    <div class="card">
+      Em breve gráficos de crescimento.
+    </div>
+  </div>
+
+  <div id="pro" class="section">
+    <h1>Plano PRO</h1>
+    <div class="card">
+      Desbloqueie:
+      <br><br>
+      ✔ Roteiros ilimitados  
+      ✔ Templates avançados  
+      ✔ Analytics completo  
+      ✔ IA Premium  
+      <br><br>
+      <button>Fazer Upgrade</button>
     </div>
   </div>
 
 </div>
 
 <script>
-const supabaseUrl = "https://fgatcdryezszrojoledj.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM";
 
-const { createClient } = supabase;
-const client = createClient(supabaseUrl, supabaseKey);
-
-// Verifica se está logado
-async function checkUser() {
-  const { data } = await client.auth.getUser();
-  if (!data.user) {
-    window.location.href = "/";
-  }
+function showSection(id) {
+  document.querySelectorAll(".section").forEach(sec => {
+    sec.classList.remove("active");
+  });
+  document.getElementById(id).classList.add("active");
 }
 
-checkUser();
-
-async function logout() {
-  await client.auth.signOut();
-  window.location.href = "/";
-}
 async function generateScript() {
   const prompt = document.getElementById("prompt").value;
 
@@ -124,15 +167,18 @@ async function generateScript() {
 
   const response = await fetch("/api/generate", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt })
   });
 
   const data = await response.json();
   document.getElementById("resultado").innerText = data.result;
 }
+
+function logout() {
+  window.location.href = "/";
+}
+
 </script>
 
 </body>
