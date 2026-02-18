@@ -130,16 +130,106 @@ async function generateScript(){
     .select("*")
     .eq("user_id", user.id)
     .single();
+<script>
 
-  if(error && error.code !== "PGRST116"){
-    alert("Erro ao buscar dados");
-    console.log(error);
+const supabaseClient = window.supabase.createClient(
+  "https://fgatcdryezszrojoledj.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
+);
+
+const MAX_DAYS = 3;
+const MAX_PER_DAY = 2;
+
+function getToday(){
+  return new Date().toISOString().split("T")[0];
+}
+
+function daysBetween(date1, date2){
+  return Math.floor(
+    (new Date(date2) - new Date(date1)) / (1000*60*60*24)
+  );
+}
+
+// 🔥 VERIFICA LOGIN AUTOMATICAMENTE AO ABRIR
+document.addEventListener("DOMContentLoaded", async () => {
+  checkLogin();
+});
+
+async function checkLogin(){
+  const { data: { user } } = await supabaseClient.auth.getUser();
+
+  if(user){
+    document.getElementById("loginStatus").innerText =
+      "Logado como: " + user.email;
+    loadStatus();
+  } else {
+    document.getElementById("loginStatus").innerText =
+      "NÃO LOGADO ❌";
+  }
+}
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
+
+async function loadStatus(){
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if(!user) return;
+
+  const today = getToday();
+
+  const { data } = await supabaseClient
+    .from("usage_control")
+    .select("*")
+    .eq("user_id", user.id);
+
+  let record = data && data.length > 0 ? data[0] : null;
+
+  if(!record){
+    document.getElementById("remaining").innerText = MAX_PER_DAY;
+    document.getElementById("daysLeft").innerText = MAX_DAYS;
     return;
   }
 
-  if(!data){
+  const totalDays = daysBetween(record.start_date, today);
+  const daysLeft = MAX_DAYS - totalDays;
 
-    const { error: insertError } = await supabaseClient
+  let dailyCount = record.daily_count;
+
+  if(today !== record.last_use_date){
+    dailyCount = 0;
+  }
+
+  document.getElementById("remaining").innerText =
+    MAX_PER_DAY - dailyCount;
+
+  document.getElementById("daysLeft").innerText =
+    daysLeft > 0 ? daysLeft : 0;
+}
+
+async function generateScript(){
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+
+  if(!user){
+    alert("Você precisa estar logado.");
+    return;
+  }
+
+  const today = getToday();
+
+  const { data } = await supabaseClient
+    .from("usage_control")
+    .select("*")
+    .eq("user_id", user.id);
+
+  let record = data && data.length > 0 ? data[0] : null;
+
+  if(!record){
+
+    await supabaseClient
       .from("usage_control")
       .insert({
         user_id: user.id,
@@ -148,27 +238,21 @@ async function generateScript(){
         daily_count: 1
       });
 
-    if(insertError){
-      alert("Erro ao criar registro");
-      console.log(insertError);
-      return;
-    }
-
-    alert("Primeiro uso registrado!");
+    alert("Primeiro uso criado!");
     loadStatus();
     return;
   }
 
-  const totalDays = daysBetween(data.start_date, today);
+  const totalDays = daysBetween(record.start_date, today);
 
   if(totalDays >= MAX_DAYS){
     alert("Plano gratuito expirou.");
     return;
   }
 
-  let dailyCount = data.daily_count || 0;
+  let dailyCount = record.daily_count;
 
-  if(today !== data.last_use_date){
+  if(today !== record.last_use_date){
     dailyCount = 0;
   }
 
@@ -179,7 +263,7 @@ async function generateScript(){
 
   const newCount = dailyCount + 1;
 
-  const { error: updateError } = await supabaseClient
+  await supabaseClient
     .from("usage_control")
     .update({
       daily_count: newCount,
@@ -187,17 +271,9 @@ async function generateScript(){
     })
     .eq("user_id", user.id);
 
-  if(updateError){
-    alert("Erro ao atualizar");
-    console.log(updateError);
-    return;
-  }
-
-  alert("Uso atualizado!");
+  alert("Uso registrado!");
   loadStatus();
 }
-
-loadStatus();
 
 </script>
 
