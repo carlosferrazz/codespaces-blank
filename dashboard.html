@@ -2,215 +2,98 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>NeuroProfit AI - Dashboard</title>
-
+<title>Teste Supabase</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: white;
-  padding: 20px;
-}
-
-.card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
-input {
-  padding: 10px;
-  width: 100%;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  border: none;
-}
-
-button {
-  padding: 10px 15px;
-  background: #06b6d4;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-button:hover {
-  opacity: 0.8;
-}
-
-hr {
-  margin: 20px 0;
-}
-</style>
 </head>
-<body>
+<body style="background:#111;color:white;font-family:Arial;padding:20px;">
 
-<h2>NeuroProfit AI - Gerador de Roteiros</h2>
+<h2>Teste de Login e Contador</h2>
 
-<!-- STATUS DE LOGIN -->
-<p>Status: <strong id="loginStatus">Verificando...</strong></p>
-<button onclick="logout()">Sair</button>
-<hr>
+<button onclick="login()">LOGIN AUTOMÁTICO</button>
+<button onclick="check()">VER STATUS</button>
+<button onclick="usar()">USAR 1 VEZ</button>
 
-<!-- GERADOR -->
-<div class="card">
-  <input id="prompt" placeholder="Digite o tema do roteiro">
-  <button onclick="generateScript()">Gerar Roteiro</button>
-
-  <p id="status"></p>
-  <p>Roteiros restantes hoje: <span id="remaining">2</span></p>
-  <p>Dias restantes: <span id="daysLeft">3</span></p>
-</div>
+<p id="status">Status: ---</p>
+<p id="contador">Uso: ---</p>
 
 <script>
+
 const supabaseClient = window.supabase.createClient(
   "https://fgatcdryezszrojoledj.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
 );
 
-const MAX_DAYS = 3;
-const MAX_PER_DAY = 2;
-
-// Função para pegar a data de hoje
-function getToday(){
+function hoje(){
   return new Date().toISOString().split("T")[0];
 }
 
-// Calcula diferença de dias
-function daysBetween(date1, date2){
-  return Math.floor((new Date(date2) - new Date(date1)) / (1000*60*60*24));
-}
+async function login(){
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email: "carlosmoreira12.cm@gmail.com",
+    password: "Bruno331452@"
+  });
 
-// Verifica login ao abrir a página
-document.addEventListener("DOMContentLoaded", async () => {
-  checkLogin();
-});
-
-async function checkLogin(){
-  const { data: { user } } = await supabaseClient.auth.getUser();
-
-  if(user){
-    document.getElementById("loginStatus").innerText =
-      "Logado como: " + user.email;
-    loadStatus();
+  if(error){
+    alert("Erro login: " + error.message);
   } else {
-    document.getElementById("loginStatus").innerText = "NÃO LOGADO ❌";
+    alert("Logado!");
+    check();
   }
 }
 
-// Logout
-async function logout(){
-  await supabaseClient.auth.signOut();
-  location.reload();
+async function check(){
+  const { data: { user } } = await supabaseClient.auth.getUser();
+
+  if(user){
+    document.getElementById("status").innerText =
+      "Logado como: " + user.email;
+  } else {
+    document.getElementById("status").innerText =
+      "NÃO LOGADO ❌";
+  }
 }
 
-// Carrega status do plano free
-async function loadStatus(){
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if(!user) return;
+async function usar(){
 
-  const today = getToday();
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if(!user){
+    alert("Faça login primeiro");
+    return;
+  }
 
   const { data } = await supabaseClient
     .from("usage_control")
     .select("*")
     .eq("user_id", user.id);
 
-  let record = data && data.length > 0 ? data[0] : null;
+  let registro = data && data.length > 0 ? data[0] : null;
 
-  if(!record){
-    document.getElementById("remaining").innerText = MAX_PER_DAY;
-    document.getElementById("daysLeft").innerText = MAX_DAYS;
+  if(!registro){
+
+    await supabaseClient.from("usage_control").insert({
+      user_id: user.id,
+      start_date: hoje(),
+      last_use_date: hoje(),
+      daily_count: 1
+    });
+
+    document.getElementById("contador").innerText =
+      "Uso criado = 1";
+
     return;
   }
 
-  const totalDays = daysBetween(record.start_date, today);
-  const daysLeft = MAX_DAYS - totalDays;
+  let novo = registro.daily_count + 1;
 
-  let dailyCount = record.daily_count;
-
-  if(today !== record.last_use_date){
-    dailyCount = 0;
-  }
-
-  document.getElementById("remaining").innerText =
-    MAX_PER_DAY - dailyCount;
-
-  document.getElementById("daysLeft").innerText =
-    daysLeft > 0 ? daysLeft : 0;
-}
-
-// Gera roteiro
-async function generateScript(){
-
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if(!user){
-    alert("Você precisa estar logado.");
-    return;
-  }
-
-  const today = getToday();
-
-  // Pega registro do usuário
-  const { data, error } = await supabaseClient
-    .from("usage_control")
-    .select("*")
-    .eq("user_id", user.id);
-
-  let record = data && data.length > 0 ? data[0] : null;
-
-  // Primeiro uso
-  if(!record){
-    await supabaseClient
-      .from("usage_control")
-      .insert({
-        user_id: user.id,
-        start_date: today,
-        last_use_date: today,
-        daily_count: 1
-      });
-
-    alert("Primeiro uso registrado!");
-    loadStatus();
-    return;
-  }
-
-  const totalDays = daysBetween(record.start_date, today);
-
-  if(totalDays >= MAX_DAYS){
-    alert("Plano gratuito expirou.");
-    return;
-  }
-
-  let dailyCount = record.daily_count;
-
-  if(today !== record.last_use_date){
-    dailyCount = 0;
-  }
-
-  if(dailyCount >= MAX_PER_DAY){
-    alert("Limite diário atingido.");
-    return;
-  }
-
-  const newCount = dailyCount + 1;
-
-  // Atualiza contador no Supabase
   await supabaseClient
     .from("usage_control")
-    .update({
-      daily_count: newCount,
-      last_use_date: today
-    })
+    .update({ daily_count: novo })
     .eq("user_id", user.id);
 
-  alert("Roteiro gerado! Hoje você usou " + newCount + " de " + MAX_PER_DAY);
-  loadStatus();
+  document.getElementById("contador").innerText =
+    "Uso atualizado = " + novo;
 }
+
 </script>
 
 </body>
