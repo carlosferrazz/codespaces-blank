@@ -8,105 +8,130 @@
 <style>
 body{
   margin:0;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg,#0f172a,#1e293b);
+  font-family:Arial;
+  background:#0f172a;
   color:white;
 }
 
-.container{
-  max-width:500px;
-  margin:60px auto;
-  background:#1e293b;
-  padding:30px;
-  border-radius:12px;
-  box-shadow:0 0 20px rgba(0,0,0,0.5);
+.wrapper{
+  display:flex;
+  height:100vh;
 }
 
-h1{
-  text-align:center;
-  margin-bottom:20px;
+.sidebar{
+  width:240px;
+  background:#111827;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
 }
 
-input{
-  width:100%;
+.sidebar h2{
+  margin-bottom:30px;
+}
+
+.menu-item{
   padding:12px;
-  margin-bottom:10px;
-  border:none;
-  border-radius:6px;
-}
-
-button{
-  width:100%;
-  padding:12px;
-  background:#06b6d4;
-  border:none;
-  border-radius:6px;
-  font-weight:bold;
+  margin-bottom:8px;
   cursor:pointer;
-  margin-top:5px;
+  border-radius:6px;
 }
 
-button:hover{
-  opacity:0.85;
+.menu-item:hover{
+  background:#1f2937;
 }
 
-.secondary{
-  background:#334155;
-}
-
-.statusBox{
-  background:#0f172a;
-  padding:15px;
-  border-radius:8px;
-  margin-top:15px;
-  font-size:14px;
+.content{
+  flex:1;
+  padding:30px;
+  overflow:auto;
 }
 
 .hidden{
   display:none;
 }
 
-.logout{
-  background:#ef4444;
-  margin-top:15px;
+.card{
+  background:#1e293b;
+  padding:20px;
+  border-radius:8px;
+}
+
+input{
+  padding:10px;
+  width:100%;
+  margin-bottom:10px;
+  border-radius:6px;
+  border:none;
+}
+
+button{
+  padding:10px;
+  background:#06b6d4;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.auth{
+  max-width:400px;
+  margin:100px auto;
+  background:#1e293b;
+  padding:30px;
+  border-radius:10px;
 }
 </style>
 </head>
 <body>
 
-<div class="container" id="authBox">
-<h1>NeuroProfit AI</h1>
+<!-- LOGIN -->
+<div id="authScreen" class="auth">
+<h2 id="authTitle">Login</h2>
 
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Senha">
 
-<button onclick="signup()">Criar Conta</button>
-<button class="secondary" onclick="login()">Entrar</button>
+<button onclick="login()">Entrar</button>
+
+<p style="margin-top:15px;">
+<span id="toggleText">Não tem conta?</span>
+<a href="#" onclick="toggleAuth()">Criar conta</a>
+</p>
 
 <p id="authMessage"></p>
 </div>
 
+<!-- APP -->
+<div id="app" class="wrapper hidden">
 
-<div class="container hidden" id="dashboard">
-<h1>Dashboard</h1>
+<div class="sidebar">
+<h2>NeuroProfit</h2>
 
-<p id="welcome"></p>
+<div class="menu-item" onclick="openPage('dashboard')">🏠 Dashboard</div>
+<div class="menu-item" onclick="openPage('gerador')">✍️ Gerador</div>
+<div class="menu-item" onclick="openPage('historico')">📊 Histórico</div>
+<div class="menu-item" onclick="openPage('analytics')">📈 Analytics</div>
+<div class="menu-item" onclick="openPage('pro')">💎 Plano PRO</div>
+<div class="menu-item" onclick="openPage('limites')">🧠 Limites</div>
+<div class="menu-item" onclick="openPage('config')">⚙️ Configurações</div>
+<div class="menu-item" id="adminBtn" onclick="openPage('admin')">🛠 Admin</div>
 
-<div class="statusBox">
-Plano Free: 2 roteiros por dia<br>
-Duração: 3 dias<br><br>
-Roteiros restantes hoje: <b id="remaining">-</b><br>
-Dias restantes: <b id="daysLeft">-</b>
+<button style="margin-top:auto;background:#ef4444;" onclick="logout()">Sair</button>
 </div>
 
-<input id="prompt" placeholder="Digite o tema do roteiro">
-<button onclick="generate()">Gerar Roteiro</button>
+<div class="content">
 
-<p id="message"></p>
+<div id="dashboard" class="card">Dashboard</div>
+<div id="gerador" class="card hidden">Gerador</div>
+<div id="historico" class="card hidden">Histórico</div>
+<div id="analytics" class="card hidden">Analytics</div>
+<div id="pro" class="card hidden">Plano PRO</div>
+<div id="limites" class="card hidden">Limites</div>
+<div id="config" class="card hidden">Configurações</div>
+<div id="admin" class="card hidden">Painel Administrativo</div>
 
-<button class="logout" onclick="logout()">Sair</button>
 </div>
-
+</div>
 
 <script>
 
@@ -115,174 +140,63 @@ const supabaseClient = window.supabase.createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
 );
 
-const MAX_DAYS = 3;
-const MAX_PER_DAY = 2;
+let isLogin = true;
 
-function hoje(){
-  return new Date().toISOString().split("T")[0];
+function toggleAuth(){
+  isLogin = !isLogin;
+
+  document.getElementById("authTitle").innerText =
+  isLogin ? "Login" : "Criar Conta";
+
+  document.querySelector("button").innerText =
+  isLogin ? "Entrar" : "Criar Conta";
+
+  document.getElementById("toggleText").innerText =
+  isLogin ? "Não tem conta?" : "Já tem conta?";
 }
 
-function diffDias(inicio,fim){
-  return Math.floor((new Date(fim)-new Date(inicio))/(1000*60*60*24));
-}
-
-// SIGNUP
-async function signup(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { error } = await supabaseClient.auth.signUp({
-    email, password
-  });
-
-  if(error){
-    document.getElementById("authMessage").innerText = error.message;
-  }else{
-    document.getElementById("authMessage").innerText =
-    "Conta criada! Agora faça login.";
-  }
-}
-
-// LOGIN
 async function login(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = emailInput.value;
+  const password = passwordInput.value;
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email, password
-  });
-
-  if(error){
-    document.getElementById("authMessage").innerText = error.message;
+  if(isLogin){
+    const { error } = await supabaseClient.auth.signInWithPassword({email,password});
+    if(error) return authMessage.innerText = error.message;
   }else{
-    initDashboard();
+    const { error } = await supabaseClient.auth.signUp({email,password});
+    if(error) return authMessage.innerText = error.message;
+  }
+
+  startApp();
+}
+
+async function startApp(){
+  document.getElementById("authScreen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+
+  const { data:{user} } = await supabaseClient.auth.getUser();
+
+  // exemplo simples de admin
+  if(user.email !== "SEU_EMAIL_ADMIN"){
+    document.getElementById("adminBtn").style.display="none";
   }
 }
 
-// LOGOUT
 async function logout(){
   await supabaseClient.auth.signOut();
   location.reload();
 }
 
-// INIT DASHBOARD
-async function initDashboard(){
-  const { data:{user} } = await supabaseClient.auth.getUser();
+function openPage(page){
+  document.querySelectorAll(".content > div")
+  .forEach(el=>el.classList.add("hidden"));
 
-  if(!user) return;
-
-  document.getElementById("authBox").classList.add("hidden");
-  document.getElementById("dashboard").classList.remove("hidden");
-
-  document.getElementById("welcome").innerText =
-  "Logado como: " + user.email;
-
-  loadStatus();
+  document.getElementById(page).classList.remove("hidden");
 }
 
-// LOAD STATUS
-async function loadStatus(){
-
-  const { data:{user} } = await supabaseClient.auth.getUser();
-  const today = hoje();
-
-  const { data } = await supabaseClient
-    .from("usage_control")
-    .select("*")
-    .eq("user_id", user.id);
-
-  let record = data && data.length>0 ? data[0] : null;
-
-  if(!record){
-    document.getElementById("remaining").innerText = MAX_PER_DAY;
-    document.getElementById("daysLeft").innerText = MAX_DAYS;
-    return;
-  }
-
-  const diasUsados = diffDias(record.start_date,today);
-  const diasRestantes = MAX_DAYS - diasUsados;
-
-  let daily = record.daily_count;
-  if(today !== record.last_use_date){
-    daily = 0;
-  }
-
-  document.getElementById("remaining").innerText =
-    MAX_PER_DAY - daily;
-
-  document.getElementById("daysLeft").innerText =
-    diasRestantes>0?diasRestantes:0;
-}
-
-// GENERATE
-async function generate(){
-
-  const { data:{user} } = await supabaseClient.auth.getUser();
-  const today = hoje();
-
-  const { data } = await supabaseClient
-    .from("usage_control")
-    .select("*")
-    .eq("user_id", user.id);
-
-  let record = data && data.length>0 ? data[0] : null;
-
-  if(!record){
-
-    await supabaseClient.from("usage_control").insert({
-      user_id:user.id,
-      start_date:today,
-      last_use_date:today,
-      daily_count:1
-    });
-
-    document.getElementById("message").innerText =
-    "Roteiro gerado! (1/2 hoje)";
-    loadStatus();
-    return;
-  }
-
-  const diasUsados = diffDias(record.start_date,today);
-
-  if(diasUsados>=MAX_DAYS){
-    document.getElementById("message").innerText =
-    "Plano Free expirou.";
-    return;
-  }
-
-  let daily = record.daily_count;
-
-  if(today !== record.last_use_date){
-    daily = 0;
-  }
-
-  if(daily>=MAX_PER_DAY){
-    document.getElementById("message").innerText =
-    "Limite diário atingido.";
-    return;
-  }
-
-  const novo = daily+1;
-
-  await supabaseClient.from("usage_control")
-  .update({
-    daily_count:novo,
-    last_use_date:today
-  })
-  .eq("user_id",user.id);
-
-  document.getElementById("message").innerText =
-  "Roteiro gerado! ("+novo+"/2 hoje)";
-
-  loadStatus();
-}
-
-// verifica login automático ao abrir
 document.addEventListener("DOMContentLoaded",async()=>{
   const { data:{user} } = await supabaseClient.auth.getUser();
-  if(user){
-    initDashboard();
-  }
+  if(user) startApp();
 });
 
 </script>
