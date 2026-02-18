@@ -80,18 +80,23 @@ button{
   padding:30px;
   border-radius:10px;
 }
+
+.ad-box{
+  background:#222;
+  padding:10px;
+  margin-top:15px;
+  text-align:center;
+  border-radius:6px;
+}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="authScreen" class="auth">
 <h2 id="authTitle">Login</h2>
-
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Senha">
-
-<button onclick="login()">Entrar</button>
+<button onclick="authAction()">Entrar</button>
 
 <p style="margin-top:15px;">
 <span id="toggleText">Não tem conta?</span>
@@ -101,34 +106,46 @@ button{
 <p id="authMessage"></p>
 </div>
 
-<!-- APP -->
 <div id="app" class="wrapper hidden">
 
 <div class="sidebar">
 <h2>NeuroProfit</h2>
-
 <div class="menu-item" onclick="openPage('dashboard')">🏠 Dashboard</div>
 <div class="menu-item" onclick="openPage('gerador')">✍️ Gerador</div>
 <div class="menu-item" onclick="openPage('historico')">📊 Histórico</div>
-<div class="menu-item" onclick="openPage('analytics')">📈 Analytics</div>
 <div class="menu-item" onclick="openPage('pro')">💎 Plano PRO</div>
-<div class="menu-item" onclick="openPage('limites')">🧠 Limites</div>
-<div class="menu-item" onclick="openPage('config')">⚙️ Configurações</div>
 <div class="menu-item" id="adminBtn" onclick="openPage('admin')">🛠 Admin</div>
-
 <button style="margin-top:auto;background:#ef4444;" onclick="logout()">Sair</button>
 </div>
 
 <div class="content">
 
-<div id="dashboard" class="card">Dashboard</div>
-<div id="gerador" class="card hidden">Gerador</div>
-<div id="historico" class="card hidden">Histórico</div>
-<div id="analytics" class="card hidden">Analytics</div>
-<div id="pro" class="card hidden">Plano PRO</div>
-<div id="limites" class="card hidden">Limites</div>
-<div id="config" class="card hidden">Configurações</div>
-<div id="admin" class="card hidden">Painel Administrativo</div>
+<div id="dashboard" class="card"></div>
+
+<div id="gerador" class="card hidden">
+<h2>Gerador</h2>
+<button onclick="generateScript()">Gerar Roteiro</button>
+<div id="resultado" style="margin-top:15px;"></div>
+<div id="adArea" class="ad-box hidden">Espaço para anúncio (FREE)</div>
+</div>
+
+<div id="historico" class="card hidden">
+<h2>Histórico</h2>
+<div id="historyList"></div>
+</div>
+
+<div id="pro" class="card hidden">
+<h2>Plano PRO</h2>
+<p>✔ Geração ilimitada</p>
+<p>✔ Sem anúncios</p>
+<p>✔ Templates premium</p>
+<button onclick="fakeUpgrade()">Ativar PRO (simulação)</button>
+</div>
+
+<div id="admin" class="card hidden">
+<h2>Painel Admin</h2>
+<div id="adminContent"></div>
+</div>
 
 </div>
 </div>
@@ -141,30 +158,29 @@ const supabaseClient = window.supabase.createClient(
 );
 
 let isLogin = true;
+let currentUser, userProfile, userUsage;
 
 function toggleAuth(){
   isLogin = !isLogin;
-
-  document.getElementById("authTitle").innerText =
-  isLogin ? "Login" : "Criar Conta";
-
-  document.querySelector("button").innerText =
-  isLogin ? "Entrar" : "Criar Conta";
-
-  document.getElementById("toggleText").innerText =
-  isLogin ? "Não tem conta?" : "Já tem conta?";
+  document.getElementById("authTitle").innerText = isLogin ? "Login" : "Criar Conta";
+  document.querySelector("#authScreen button").innerText = isLogin ? "Entrar" : "Criar Conta";
+  document.getElementById("toggleText").innerText = isLogin ? "Não tem conta?" : "Já tem conta?";
 }
 
-async function login(){
-  const email = emailInput.value;
-  const password = passwordInput.value;
+async function authAction(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
+  let result;
   if(isLogin){
-    const { error } = await supabaseClient.auth.signInWithPassword({email,password});
-    if(error) return authMessage.innerText = error.message;
-  }else{
-    const { error } = await supabaseClient.auth.signUp({email,password});
-    if(error) return authMessage.innerText = error.message;
+    result = await supabaseClient.auth.signInWithPassword({email,password});
+  } else {
+    result = await supabaseClient.auth.signUp({email,password});
+  }
+
+  if(result.error){
+    authMessage.innerText = result.error.message;
+    return;
   }
 
   startApp();
@@ -175,23 +191,131 @@ async function startApp(){
   document.getElementById("app").classList.remove("hidden");
 
   const { data:{user} } = await supabaseClient.auth.getUser();
+  currentUser = user;
 
-  // exemplo simples de admin
-  if(user.email !== "SEU_EMAIL_ADMIN"){
+  const { data:profile } = await supabaseClient.from("profiles").select("*").eq("id",user.id).single();
+  const { data:usage } = await supabaseClient.from("usage_control").select("*").eq("user_id",user.id).single();
+
+  userProfile = profile;
+  userUsage = usage;
+
+  if(user.email !== "carlosmoreira12.cm@gmail.com"){
     document.getElementById("adminBtn").style.display="none";
   }
+
+  loadDashboard();
+  loadHistory();
 }
 
-async function logout(){
-  await supabaseClient.auth.signOut();
-  location.reload();
+function loadDashboard(){
+  document.getElementById("dashboard").innerHTML = `
+    <h2>Dashboard</h2>
+    <p><b>Email:</b> ${currentUser.email}</p>
+    <p><b>Plano:</b> ${userProfile.plano.toUpperCase()}</p>
+    <p><b>Hoje:</b> ${userUsage.daily_count}</p>
+    <p><b>Total:</b> ${userUsage.total_generated}</p>
+  `;
+}
+
+async function checkLimit(){
+  if(userProfile.plano === "pro") return true;
+
+  const today = new Date().toISOString().split("T")[0];
+
+  if(userUsage.last_use_date !== today){
+    await supabaseClient.from("usage_control")
+    .update({daily_count:0,last_use_date:today})
+    .eq("user_id",currentUser.id);
+
+    userUsage.daily_count=0;
+  }
+
+  const start = new Date(userUsage.start_date);
+  const diffDays = Math.floor((new Date()-start)/(1000*60*60*24));
+
+  if(diffDays>=3){
+    alert("Teste gratuito acabou.");
+    return false;
+  }
+
+  if(userUsage.daily_count>=2){
+    alert("Limite diário atingido.");
+    return false;
+  }
+
+  return true;
+}
+
+async function generateScript(){
+
+  const allowed = await checkLimit();
+  if(!allowed) return;
+
+  const content = "Roteiro gerado com IA simulada para teste.";
+
+  document.getElementById("resultado").innerText = content;
+
+  await supabaseClient.from("usage_control")
+  .update({
+    daily_count:userUsage.daily_count+1,
+    total_generated:userUsage.total_generated+1
+  })
+  .eq("user_id",currentUser.id);
+
+  await supabaseClient.from("scripts_history")
+  .insert({
+    user_id:currentUser.id,
+    platform:"YouTube",
+    niche:"Geral",
+    content:content
+  });
+
+  userUsage.daily_count++;
+  userUsage.total_generated++;
+
+  if(userProfile.plano==="free"){
+    document.getElementById("adArea").classList.remove("hidden");
+  }
+
+  loadDashboard();
+  loadHistory();
+}
+
+async function loadHistory(){
+  const { data } = await supabaseClient
+  .from("scripts_history")
+  .select("*")
+  .eq("user_id",currentUser.id)
+  .order("created_at",{ascending:false});
+
+  const list = data.map(item=>`
+    <div style="margin-bottom:10px;padding:10px;background:#111;">
+      ${item.content}
+    </div>
+  `).join("");
+
+  document.getElementById("historyList").innerHTML = list;
+}
+
+async function fakeUpgrade(){
+  await supabaseClient.from("profiles")
+  .update({plano:"pro"})
+  .eq("id",currentUser.id);
+
+  userProfile.plano="pro";
+  alert("Plano PRO ativado (simulação)");
+  loadDashboard();
 }
 
 function openPage(page){
   document.querySelectorAll(".content > div")
   .forEach(el=>el.classList.add("hidden"));
-
   document.getElementById(page).classList.remove("hidden");
+}
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  location.reload();
 }
 
 document.addEventListener("DOMContentLoaded",async()=>{
