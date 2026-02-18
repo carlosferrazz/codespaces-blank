@@ -8,7 +8,7 @@
 
 <style>
 body {
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: #0f172a;
   color: white;
   padding: 20px;
@@ -41,26 +41,32 @@ button {
 button:hover {
   opacity: 0.8;
 }
-</style>
 
+hr {
+  margin: 20px 0;
+}
+</style>
 </head>
 <body>
 
-<h2>Gerador de Roteiros</h2>
+<h2>NeuroProfit AI - Gerador de Roteiros</h2>
+
+<!-- STATUS DE LOGIN -->
 <p>Status: <strong id="loginStatus">Verificando...</strong></p>
 <button onclick="logout()">Sair</button>
 <hr>
+
+<!-- GERADOR -->
 <div class="card">
   <input id="prompt" placeholder="Digite o tema do roteiro">
   <button onclick="generateScript()">Gerar Roteiro</button>
 
   <p id="status"></p>
-  <p>Restantes hoje: <span id="remaining">2</span></p>
+  <p>Roteiros restantes hoje: <span id="remaining">2</span></p>
   <p>Dias restantes: <span id="daysLeft">3</span></p>
 </div>
 
 <script>
-
 const supabaseClient = window.supabase.createClient(
   "https://fgatcdryezszrojoledj.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
@@ -69,88 +75,17 @@ const supabaseClient = window.supabase.createClient(
 const MAX_DAYS = 3;
 const MAX_PER_DAY = 2;
 
+// Função para pegar a data de hoje
 function getToday(){
   return new Date().toISOString().split("T")[0];
 }
 
+// Calcula diferença de dias
 function daysBetween(date1, date2){
-  return Math.floor(
-    (new Date(date2) - new Date(date1)) / (1000*60*60*24)
-  );
+  return Math.floor((new Date(date2) - new Date(date1)) / (1000*60*60*24));
 }
 
-async function loadStatus(){
-
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if(!user) return;
-
-  const today = getToday();
-
-  const { data } = await supabaseClient
-    .from("usage_control")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
-
-  if(!data){
-    document.getElementById("remaining").innerText = MAX_PER_DAY;
-    document.getElementById("daysLeft").innerText = MAX_DAYS;
-    return;
-  }
-
-  const totalDays = daysBetween(data.start_date, today);
-  const daysLeft = MAX_DAYS - totalDays;
-
-  let dailyCount = data.daily_count || 0;
-
-  if(today !== data.last_use_date){
-    dailyCount = 0;
-  }
-
-  document.getElementById("remaining").innerText =
-    MAX_PER_DAY - dailyCount;
-
-  document.getElementById("daysLeft").innerText =
-    daysLeft > 0 ? daysLeft : 0;
-}
-
-async function generateScript(){
-
-  const { data: { user } } = await supabaseClient.auth.getUser();
-
-  if(!user){
-    alert("Faça login primeiro.");
-    return;
-  }
-
-  const today = getToday();
-
-  const { data, error } = await supabaseClient
-    .from("usage_control")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
-<script>
-
-const supabaseClient = window.supabase.createClient(
-  "https://fgatcdryezszrojoledj.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
-);
-
-const MAX_DAYS = 3;
-const MAX_PER_DAY = 2;
-
-function getToday(){
-  return new Date().toISOString().split("T")[0];
-}
-
-function daysBetween(date1, date2){
-  return Math.floor(
-    (new Date(date2) - new Date(date1)) / (1000*60*60*24)
-  );
-}
-
-// 🔥 VERIFICA LOGIN AUTOMATICAMENTE AO ABRIR
+// Verifica login ao abrir a página
 document.addEventListener("DOMContentLoaded", async () => {
   checkLogin();
 });
@@ -163,18 +98,18 @@ async function checkLogin(){
       "Logado como: " + user.email;
     loadStatus();
   } else {
-    document.getElementById("loginStatus").innerText =
-      "NÃO LOGADO ❌";
+    document.getElementById("loginStatus").innerText = "NÃO LOGADO ❌";
   }
 }
 
+// Logout
 async function logout(){
   await supabaseClient.auth.signOut();
   location.reload();
 }
 
+// Carrega status do plano free
 async function loadStatus(){
-
   const { data: { user } } = await supabaseClient.auth.getUser();
   if(!user) return;
 
@@ -209,10 +144,10 @@ async function loadStatus(){
     daysLeft > 0 ? daysLeft : 0;
 }
 
+// Gera roteiro
 async function generateScript(){
 
   const { data: { user } } = await supabaseClient.auth.getUser();
-
   if(!user){
     alert("Você precisa estar logado.");
     return;
@@ -220,15 +155,16 @@ async function generateScript(){
 
   const today = getToday();
 
-  const { data } = await supabaseClient
+  // Pega registro do usuário
+  const { data, error } = await supabaseClient
     .from("usage_control")
     .select("*")
     .eq("user_id", user.id);
 
   let record = data && data.length > 0 ? data[0] : null;
 
+  // Primeiro uso
   if(!record){
-
     await supabaseClient
       .from("usage_control")
       .insert({
@@ -238,7 +174,7 @@ async function generateScript(){
         daily_count: 1
       });
 
-    alert("Primeiro uso criado!");
+    alert("Primeiro uso registrado!");
     loadStatus();
     return;
   }
@@ -263,6 +199,7 @@ async function generateScript(){
 
   const newCount = dailyCount + 1;
 
+  // Atualiza contador no Supabase
   await supabaseClient
     .from("usage_control")
     .update({
@@ -271,10 +208,9 @@ async function generateScript(){
     })
     .eq("user_id", user.id);
 
-  alert("Uso registrado!");
+  alert("Roteiro gerado! Hoje você usou " + newCount + " de " + MAX_PER_DAY);
   loadStatus();
 }
-
 </script>
 
 </body>
