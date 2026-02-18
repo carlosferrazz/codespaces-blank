@@ -47,7 +47,9 @@ button:hover {
 <body>
 
 <h2>Gerador de Roteiros</h2>
-
+<p>Status: <strong id="loginStatus">Verificando...</strong></p>
+<button onclick="logout()">Sair</button>
+<hr>
 <div class="card">
   <input id="prompt" placeholder="Digite o tema do roteiro">
   <button onclick="generateScript()">Gerar Roteiro</button>
