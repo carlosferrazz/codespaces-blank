@@ -2,19 +2,111 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Teste Supabase</title>
+<title>NeuroProfit AI</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+  margin:0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg,#0f172a,#1e293b);
+  color:white;
+}
+
+.container{
+  max-width:500px;
+  margin:60px auto;
+  background:#1e293b;
+  padding:30px;
+  border-radius:12px;
+  box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+
+h1{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+input{
+  width:100%;
+  padding:12px;
+  margin-bottom:10px;
+  border:none;
+  border-radius:6px;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  background:#06b6d4;
+  border:none;
+  border-radius:6px;
+  font-weight:bold;
+  cursor:pointer;
+  margin-top:5px;
+}
+
+button:hover{
+  opacity:0.85;
+}
+
+.secondary{
+  background:#334155;
+}
+
+.statusBox{
+  background:#0f172a;
+  padding:15px;
+  border-radius:8px;
+  margin-top:15px;
+  font-size:14px;
+}
+
+.hidden{
+  display:none;
+}
+
+.logout{
+  background:#ef4444;
+  margin-top:15px;
+}
+</style>
 </head>
-<body style="background:#111;color:white;font-family:Arial;padding:20px;">
+<body>
 
-<h2>Teste de Login e Contador</h2>
+<div class="container" id="authBox">
+<h1>NeuroProfit AI</h1>
 
-<button onclick="login()">LOGIN AUTOMÁTICO</button>
-<button onclick="check()">VER STATUS</button>
-<button onclick="usar()">USAR 1 VEZ</button>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Senha">
 
-<p id="status">Status: ---</p>
-<p id="contador">Uso: ---</p>
+<button onclick="signup()">Criar Conta</button>
+<button class="secondary" onclick="login()">Entrar</button>
+
+<p id="authMessage"></p>
+</div>
+
+
+<div class="container hidden" id="dashboard">
+<h1>Dashboard</h1>
+
+<p id="welcome"></p>
+
+<div class="statusBox">
+Plano Free: 2 roteiros por dia<br>
+Duração: 3 dias<br><br>
+Roteiros restantes hoje: <b id="remaining">-</b><br>
+Dias restantes: <b id="daysLeft">-</b>
+</div>
+
+<input id="prompt" placeholder="Digite o tema do roteiro">
+<button onclick="generate()">Gerar Roteiro</button>
+
+<p id="message"></p>
+
+<button class="logout" onclick="logout()">Sair</button>
+</div>
+
 
 <script>
 
@@ -23,76 +115,175 @@ const supabaseClient = window.supabase.createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
 );
 
+const MAX_DAYS = 3;
+const MAX_PER_DAY = 2;
+
 function hoje(){
   return new Date().toISOString().split("T")[0];
 }
 
-async function login(){
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email: "carlosmoreira12.cm@gmail.com",
-    password: "Bruno331452@"
+function diffDias(inicio,fim){
+  return Math.floor((new Date(fim)-new Date(inicio))/(1000*60*60*24));
+}
+
+// SIGNUP
+async function signup(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabaseClient.auth.signUp({
+    email, password
   });
 
   if(error){
-    alert("Erro login: " + error.message);
-  } else {
-    alert("Logado!");
-    check();
+    document.getElementById("authMessage").innerText = error.message;
+  }else{
+    document.getElementById("authMessage").innerText =
+    "Conta criada! Agora faça login.";
   }
 }
 
-async function check(){
-  const { data: { user } } = await supabaseClient.auth.getUser();
+// LOGIN
+async function login(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-  if(user){
-    document.getElementById("status").innerText =
-      "Logado como: " + user.email;
-  } else {
-    document.getElementById("status").innerText =
-      "NÃO LOGADO ❌";
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email, password
+  });
+
+  if(error){
+    document.getElementById("authMessage").innerText = error.message;
+  }else{
+    initDashboard();
   }
 }
 
-async function usar(){
+// LOGOUT
+async function logout(){
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
 
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if(!user){
-    alert("Faça login primeiro");
-    return;
-  }
+// INIT DASHBOARD
+async function initDashboard(){
+  const { data:{user} } = await supabaseClient.auth.getUser();
+
+  if(!user) return;
+
+  document.getElementById("authBox").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+
+  document.getElementById("welcome").innerText =
+  "Logado como: " + user.email;
+
+  loadStatus();
+}
+
+// LOAD STATUS
+async function loadStatus(){
+
+  const { data:{user} } = await supabaseClient.auth.getUser();
+  const today = hoje();
 
   const { data } = await supabaseClient
     .from("usage_control")
     .select("*")
     .eq("user_id", user.id);
 
-  let registro = data && data.length > 0 ? data[0] : null;
+  let record = data && data.length>0 ? data[0] : null;
 
-  if(!registro){
-
-    await supabaseClient.from("usage_control").insert({
-      user_id: user.id,
-      start_date: hoje(),
-      last_use_date: hoje(),
-      daily_count: 1
-    });
-
-    document.getElementById("contador").innerText =
-      "Uso criado = 1";
-
+  if(!record){
+    document.getElementById("remaining").innerText = MAX_PER_DAY;
+    document.getElementById("daysLeft").innerText = MAX_DAYS;
     return;
   }
 
-  let novo = registro.daily_count + 1;
+  const diasUsados = diffDias(record.start_date,today);
+  const diasRestantes = MAX_DAYS - diasUsados;
 
-  await supabaseClient
+  let daily = record.daily_count;
+  if(today !== record.last_use_date){
+    daily = 0;
+  }
+
+  document.getElementById("remaining").innerText =
+    MAX_PER_DAY - daily;
+
+  document.getElementById("daysLeft").innerText =
+    diasRestantes>0?diasRestantes:0;
+}
+
+// GENERATE
+async function generate(){
+
+  const { data:{user} } = await supabaseClient.auth.getUser();
+  const today = hoje();
+
+  const { data } = await supabaseClient
     .from("usage_control")
-    .update({ daily_count: novo })
+    .select("*")
     .eq("user_id", user.id);
 
-  document.getElementById("contador").innerText =
-    "Uso atualizado = " + novo;
+  let record = data && data.length>0 ? data[0] : null;
+
+  if(!record){
+
+    await supabaseClient.from("usage_control").insert({
+      user_id:user.id,
+      start_date:today,
+      last_use_date:today,
+      daily_count:1
+    });
+
+    document.getElementById("message").innerText =
+    "Roteiro gerado! (1/2 hoje)";
+    loadStatus();
+    return;
+  }
+
+  const diasUsados = diffDias(record.start_date,today);
+
+  if(diasUsados>=MAX_DAYS){
+    document.getElementById("message").innerText =
+    "Plano Free expirou.";
+    return;
+  }
+
+  let daily = record.daily_count;
+
+  if(today !== record.last_use_date){
+    daily = 0;
+  }
+
+  if(daily>=MAX_PER_DAY){
+    document.getElementById("message").innerText =
+    "Limite diário atingido.";
+    return;
+  }
+
+  const novo = daily+1;
+
+  await supabaseClient.from("usage_control")
+  .update({
+    daily_count:novo,
+    last_use_date:today
+  })
+  .eq("user_id",user.id);
+
+  document.getElementById("message").innerText =
+  "Roteiro gerado! ("+novo+"/2 hoje)";
+
+  loadStatus();
 }
+
+// verifica login automático ao abrir
+document.addEventListener("DOMContentLoaded",async()=>{
+  const { data:{user} } = await supabaseClient.auth.getUser();
+  if(user){
+    initDashboard();
+  }
+});
 
 </script>
 
