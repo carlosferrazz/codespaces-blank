@@ -194,7 +194,7 @@ async function startApp(){
   currentUser = user;
 
   const { data:profile } = await supabaseClient.from("profiles").select("*").eq("id",user.id).single();
-  const { data:usage } = await supabaseClient.from("usage_control").select("*").eq("user_id",user.id).single();
+  const { data:usage } = await supabaseClient.from("controle_de_uso").select("*").eq("user_id",user.id).single();
 
   userProfile = profile;
   userUsage = usage;
@@ -255,7 +255,7 @@ async function generateScript(){
 
   document.getElementById("resultado").innerText = content;
 
-  await supabaseClient.from("usage_control")
+  await supabaseClient.from("controle_de_uso")
   .update({
     daily_count:userUsage.daily_count+1,
     total_generated:userUsage.total_generated+1
