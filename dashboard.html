@@ -1,123 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teste</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<h1>Teste Supabase</h1>
+
 <script>
+  const supabaseClient = window.supabase.createClient(
+    "SUA_URL_AQUI",
+    "SUA_ANON_KEY_AQUI"
+  );
 
-const supabaseClient = window.supabase.createClient(
-  "https://fgatcdryezszrojoledj.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
-);
-
-let currentUser = null;
-let userProfile = null;
-let userUsage = null;
-
-/* LOGIN */
-async function authAction(){
-
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if(error){
-    alert(error.message);
-    return;
-  }
-
-  startApp();
-}
-
-/* START APP */
-async function startApp(){
-
-  const { data:{user} } = await supabaseClient.auth.getUser();
-  currentUser = user;
-
-  const { data:profile } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  userProfile = profile;
-
-  const { data:usage } = await supabaseClient
-    .from("usage_control")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
-
-  userUsage = usage;
-
-  loadDashboard();
-}
-
-/* DASHBOARD */
-function loadDashboard(){
-  document.getElementById("hojeCount").innerText = userUsage.daily_count;
-  document.getElementById("totalCount").innerText = userUsage.total_generated;
-}
-
-/* CHECK LIMIT */
-async function checkLimit(){
-
-  if(userProfile.plan === "pro") return true;
-
-  const today = new Date().toISOString().split("T")[0];
-
-  if(userUsage.last_use_date !== today){
-
-    await supabaseClient
-      .from("usage_control")
-      .update({
-        daily_count: 0,
-        last_use_date: today
-      })
-      .eq("user_id", currentUser.id);
-
-    userUsage.daily_count = 0;
-  }
-
-  if(userUsage.daily_count >= 3){
-    alert("Daily limit reached!");
-    return false;
-  }
-
-  return true;
-}
-
-/* GENERATE SCRIPT */
-async function generateScript(){
-
-  const allowed = await checkLimit();
-  if(!allowed) return;
-
-  const roteiro = "Roteiro teste IA 🚀";
-
-  await supabaseClient
-    .from("usage_control")
-    .update({
-      daily_count: userUsage.daily_count + 1,
-      total_generated: userUsage.total_generated + 1,
-      last_use_date: new Date().toISOString().split("T")[0]
-    })
-    .eq("user_id", currentUser.id);
-
-  await supabaseClient
-    .from("scripts_history")
-    .insert([{
-      user_id: currentUser.id,
-      title: "Roteiro Teste",
-      content: roteiro
-    }]);
-
-  userUsage.daily_count++;
-  userUsage.total_generated++;
-
-  loadDashboard();
-
-  alert("Roteiro gerado com sucesso!");
-}
-
+  console.log("Supabase carregado");
 </script>
+
+</body>
+</html>
