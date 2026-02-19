@@ -9,16 +9,13 @@ let currentUser = null;
 let userProfile = null;
 let userUsage = null;
 
-/* =========================
-   AUTENTICAÇÃO
-========================= */
-
+/* LOGIN */
 async function authAction(){
 
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
+  const { error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
   });
@@ -31,30 +28,22 @@ async function authAction(){
   startApp();
 }
 
-/* =========================
-   INICIAR APP
-========================= */
-
+/* START APP */
 async function startApp(){
-
-  document.getElementById("authScreen").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
 
   const { data:{user} } = await supabaseClient.auth.getUser();
   currentUser = user;
 
-  // PERFIL
   const { data:profile } = await supabaseClient
-    .from("perfis")
+    .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
 
   userProfile = profile;
 
-  // CONTROLE DE USO
   const { data:usage } = await supabaseClient
-    .from("controle_de_uso")
+    .from("usage_control")
     .select("*")
     .eq("user_id", user.id)
     .single();
@@ -64,32 +53,23 @@ async function startApp(){
   loadDashboard();
 }
 
-/* =========================
-   DASHBOARD
-========================= */
-
+/* DASHBOARD */
 function loadDashboard(){
-
-  document.getElementById("planoUsuario").innerText = userProfile.plano;
   document.getElementById("hojeCount").innerText = userUsage.daily_count;
   document.getElementById("totalCount").innerText = userUsage.total_generated;
-
 }
 
-/* =========================
-   VERIFICAR LIMITE
-========================= */
-
+/* CHECK LIMIT */
 async function checkLimit(){
 
-  if(userProfile.plano === "pro") return true;
+  if(userProfile.plan === "pro") return true;
 
   const today = new Date().toISOString().split("T")[0];
 
   if(userUsage.last_use_date !== today){
 
     await supabaseClient
-      .from("controle_de_uso")
+      .from("usage_control")
       .update({
         daily_count: 0,
         last_use_date: today
@@ -100,26 +80,23 @@ async function checkLimit(){
   }
 
   if(userUsage.daily_count >= 3){
-    alert("Limite diário atingido!");
+    alert("Daily limit reached!");
     return false;
   }
 
   return true;
 }
 
-/* =========================
-   GERAR ROTEIRO
-========================= */
-
+/* GENERATE SCRIPT */
 async function generateScript(){
 
   const allowed = await checkLimit();
   if(!allowed) return;
 
-  const roteiroGerado = "Roteiro exemplo gerado com IA 🚀";
+  const roteiro = "Roteiro teste IA 🚀";
 
   await supabaseClient
-    .from("controle_de_uso")
+    .from("usage_control")
     .update({
       daily_count: userUsage.daily_count + 1,
       total_generated: userUsage.total_generated + 1,
@@ -128,11 +105,11 @@ async function generateScript(){
     .eq("user_id", currentUser.id);
 
   await supabaseClient
-    .from("histórico_de_scripts")
+    .from("scripts_history")
     .insert([{
       user_id: currentUser.id,
-      titulo: "Roteiro Teste",
-      conteudo: roteiroGerado
+      title: "Roteiro Teste",
+      content: roteiro
     }]);
 
   userUsage.daily_count++;
@@ -141,15 +118,6 @@ async function generateScript(){
   loadDashboard();
 
   alert("Roteiro gerado com sucesso!");
-}
-
-/* =========================
-   LOGOUT
-========================= */
-
-async function logout(){
-  await supabaseClient.auth.signOut();
-  location.reload();
 }
 
 </script>
