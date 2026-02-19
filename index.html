@@ -1,81 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>NeuroProfit AI</title>
+  <title>App</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    body {
-      background-color: #0b1a2e;
-      color: white;
-      font-family: Arial;
-      text-align: center;
-      margin-top: 100px;
-    }
-    input {
-      display: block;
-      margin: 10px auto;
-      padding: 10px;
-      width: 250px;
-    }
-    button {
-      padding: 10px 20px;
-      margin: 5px;
-      cursor: pointer;
-    }
-  </style>
 </head>
 <body>
 
-  <h1>NeuroProfit AI</h1>
+<h1>Login</h1>
 
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Senha">
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Senha">
+<button onclick="login()">Entrar</button>
 
-  <button onclick="signUp()">Criar Conta</button>
-  <button onclick="signIn()">Entrar</button>
+<hr>
 
-  <p id="message"></p>
+<button onclick="generateScript()">Gerar Roteiro</button>
 
-  <script>
-    const supabaseUrl = "https://fgatcdryezszrojoledj.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM";
+<p>Hoje: <span id="hojeCount">0</span></p>
+<p>Total: <span id="totalCount">0</span></p>
 
-    const { createClient } = supabase;
-    const client = createClient(supabaseUrl, supabaseKey);
+<script>
 
-    async function signUp() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+const supabaseClient = window.supabase.createClient(
+  "https://fgatcdryezszrojoledj.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXRjZHJ5ZXpzenJvam9sZWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTA2NTEsImV4cCI6MjA4NjcyNjY1MX0.kv9k1EkVYGYUpUcpdGMIF_n3uGFlAxa37nCjx-ZsDaM"
+);
 
-      const { data, error } = await client.auth.signUp({
-        email: email,
-        password: password
-      });
+let currentUser = null;
+let userUsage = null;
 
-      if (error) {
-        document.getElementById("message").innerText = error.message;
-      } else {
-        document.getElementById("message").innerText = "Conta criada! Verifique seu email.";
-      }
-    }
+async function login(){
 
-    async function signIn() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-      const { data, error } = await client.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
 
-      if (error) {
-        document.getElementById("message").innerText = error.message;
-      } else {
-        window.location.href = "/dashboard.html";
-      }
-    }
-  </script>
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  currentUser = data.user;
+
+  const { data:usage } = await supabaseClient
+    .from("usage_control")
+    .select("*")
+    .eq("user_id", currentUser.id)
+    .single();
+
+  userUsage = usage;
+
+  document.getElementById("hojeCount").innerText = userUsage.daily_count;
+  document.getElementById("totalCount").innerText = userUsage.total_generated;
+
+  alert("Logado!");
+}
+
+async function generateScript(){
+
+  if(!currentUser){
+    alert("Faça login primeiro");
+    return;
+  }
+
+  await supabaseClient
+    .from("usage_control")
+    .update({
+      daily_count: userUsage.daily_count + 1,
+      total_generated: userUsage.total_generated + 1
+    })
+    .eq("user_id", currentUser.id);
+
+  userUsage.daily_count++;
+  userUsage.total_generated++;
+
+  document.getElementById("hojeCount").innerText = userUsage.daily_count;
+  document.getElementById("totalCount").innerText = userUsage.total_generated;
+
+  alert("Roteiro gerado!");
+}
+
+</script>
 
 </body>
 </html>
