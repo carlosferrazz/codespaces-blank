@@ -223,7 +223,7 @@ async function checkLimit(){
   const today = new Date().toISOString().split("T")[0];
 
   if(userUsage.last_use_date !== today){
-    await supabaseClient.from("usage_control")
+    await supabaseClient.from("controle_de_uso")
     .update({daily_count:0,last_use_date:today})
     .eq("user_id",currentUser.id);
 
